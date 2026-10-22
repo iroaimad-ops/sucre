@@ -1,0 +1,1035 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Libération du Sucre</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+<style>
+/* Layout : une colonne façon appli mobile, barre d'onglets en bas.
+   Le ciel est la seule variable : JS recalcule ces jetons du bleu nuit au bleu ciel
+   selon la croissance de la plante (accueil) ou le rang de l'étape (pages d'étape).
+   Thème unique et volontaire. */
+:root {
+  --bg: #16233a;
+  --fg: #eaf3fb;
+  --muted: #a9bdd2;
+  --line: #34496a;
+  --surface: #1f2f49;
+  --surface-2: #283b58;
+  --accent: #a9d4f5;
+  --on-accent: #11243b;
+  --glow: #4d7aa8;
+  --ok: #8fd0aa;
+  --warn: #ecd08e;
+  --bad: #eda593;
+  --on-sem: #11243b;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --ease: cubic-bezier(.22,.8,.24,1);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100%;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  transition: background-color 1.4s var(--ease), color 1.4s var(--ease);
+  overflow-x: hidden;
+}
+a { color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ── Ciel et soleil ── */
+#sky { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+#sun {
+  position: absolute; left: 50%; top: 0;
+  width: 150vmin; height: 150vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow) 0%, transparent 62%);
+  transform: translate(-50%, 70vh) scale(.5);
+  opacity: .12;
+  transition: transform 1.8s var(--ease), opacity 1.8s var(--ease);
+  filter: blur(8px);
+}
+#flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 40;
+  background: radial-gradient(circle at 50% 35%, rgba(240,248,255,.9) 0%, rgba(200,228,248,.45) 40%, transparent 75%);
+  opacity: 0;
+}
+#flash.go { animation: flash 1.3s var(--ease); }
+@keyframes flash { 0% { opacity: 0 } 18% { opacity: .6 } 100% { opacity: 0 } }
+
+.app { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding-top: 20px; display: flex; flex-direction: column; gap: 18px; }
+
+/* ── Typo ── */
+.eyebrow { margin: 0; font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -.015em; }
+h1 { font-size: clamp(1.7rem, 7vw, 2.3rem); line-height: 1.08; font-weight: 700; }
+h2 { font-size: 1.15rem; font-weight: 650; }
+.brand { font-size: 1.05rem; font-weight: 700; letter-spacing: .01em; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+p { margin: 0; }
+
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+
+/* ── Plante ── */
+.grow { text-align: center; padding: 4px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.plant { width: min(270px, 72vw); max-width: 100%; aspect-ratio: 1; }
+.plant svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.stage {
+  font-family: var(--f-display); font-weight: 800;
+  font-size: clamp(2.6rem, 13vw, 3.6rem); line-height: .95; letter-spacing: -.035em;
+  font-variation-settings: "opsz" 96;
+}
+.days { font-size: 1rem; }
+.days b { font-family: var(--f-display); font-size: 1.35rem; }
+.grow .sub { color: var(--muted); font-size: .92rem; max-width: 34ch; }
+.next-mile { margin-top: 6px; width: min(320px, 100%); display: flex; flex-direction: column; gap: 6px; font-size: .84rem; color: var(--muted); }
+.track { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.track > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 1s var(--ease); }
+
+/* ── Cartes ── */
+.card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px 18px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--line);
+  text-decoration: none; transition: background-color 1.4s var(--ease), border-color 1.4s var(--ease), transform .2s;
+}
+a.card:active { transform: scale(.985); }
+.card .k { font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.card .t { font-family: var(--f-display); font-size: 1.12rem; font-weight: 650; line-height: 1.25; }
+.card .go { font-size: .88rem; color: var(--accent); font-weight: 700; }
+.card.call { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.card.call .k, .card.call .go { color: var(--on-accent); opacity: .8; }
+
+/* ── Lumière ── */
+.light { display: flex; flex-direction: column; gap: 8px; }
+.light-head { display: flex; justify-content: space-between; align-items: baseline; }
+.light-head b { font-family: var(--f-display); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.rays { display: grid; grid-template-columns: repeat(21, 1fr); gap: 3px; }
+.rays a, .rays span { display: block; height: 22px; border-radius: 4px; background: var(--line); opacity: .7; transition: background-color .6s, opacity .6s, box-shadow .6s; }
+.rays .on { opacity: 1; }
+.rays .here { outline: 2px solid var(--fg); outline-offset: 1px; }
+
+/* ── Étapes de croissance ── */
+.stages { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.stg { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; color: var(--muted); }
+.stg .ico { width: 100%; max-width: 50px; aspect-ratio: 1; border-radius: 14px; border: 1.5px dashed var(--line); padding: 3px; }
+.stg .ico svg { width: 100%; height: 100%; display: block; opacity: .35; filter: grayscale(.8); }
+.stg b { font-size: .68rem; line-height: 1.2; }
+.stg span { font-size: .64rem; font-variant-numeric: tabular-nums; }
+.stg.lit { color: var(--fg); }
+.stg.lit .ico { border-style: solid; background: var(--surface); }
+.stg.lit .ico svg { opacity: 1; filter: none; }
+.stg.now .ico { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+.sos { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 99px; border: 1.5px solid var(--accent); text-decoration: none; font-weight: 700; }
+.sos small { font-weight: 400; color: var(--muted); display: block; }
+
+/* ── Parcours ── */
+.phase { display: flex; flex-direction: column; gap: 4px; }
+.phase-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 6px; }
+.phase-h .when { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.node {
+  position: relative; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 14px;
+  padding: 10px 0; text-decoration: none;
+}
+.node::before { content: ""; position: absolute; left: 21px; top: -8px; bottom: -8px; width: 2px; background: var(--line); z-index: -1; }
+.node.first::before { top: 50%; }
+.node.last::before { bottom: 50%; }
+.dot {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--f-display); font-weight: 700; font-size: .95rem;
+  border: 1.5px solid var(--line); background: var(--bg); color: var(--muted);
+  transition: background-color .8s, box-shadow .8s, color .8s;
+}
+.node.done .dot { border: none; color: #11243b; }
+.node .nt { font-weight: 700; line-height: 1.3; min-width: 0; }
+.node .ns { font-size: .8rem; color: var(--muted); }
+.node.done .nt { color: var(--fg); }
+.node .chev { color: var(--muted); }
+
+/* ── Page étape ── */
+.crumb { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; }
+.crumb a { text-decoration: none; font-weight: 700; padding: 6px 0; }
+.stepno { font-family: var(--f-display); font-weight: 800; font-size: clamp(4rem, 22vw, 6rem); line-height: .85; letter-spacing: -.05em; font-variant-numeric: tabular-nums; color: var(--accent); }
+.tag { align-self: flex-start; font-size: .76rem; font-weight: 700; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.detail { font-size: 1.04rem; max-width: 62ch; display: flex; flex-direction: column; gap: 10px; }
+.detail ul { margin: 6px 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 8px; }
+.detail strong { font-weight: 700; }
+.detail em { font-style: italic; }
+.lux { display: flex; justify-content: space-between; font-size: .84rem; color: var(--muted); }
+.primary {
+  appearance: none; border: none; cursor: pointer;
+  padding: 16px 20px; border-radius: 16px; font-weight: 700; font-size: 1.02rem;
+  background: var(--accent); color: var(--on-accent);
+  transition: transform .15s, background-color 1.4s, color 1.4s;
+}
+.primary:active { transform: scale(.98); }
+.ghost { appearance: none; cursor: pointer; padding: 14px 18px; border-radius: 16px; font-weight: 700; background: transparent; border: 1.5px solid var(--line); }
+.donebadge { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.donebadge b { color: var(--accent); }
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pager a { text-decoration: none; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); font-size: .88rem; min-width: 0; }
+.pager a span { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pager a.nx { text-align: right; }
+.pager .empty { visibility: hidden; }
+
+/* ── Bilan ── */
+form { display: flex; flex-direction: column; gap: 22px; }
+fieldset { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+legend { font-family: var(--f-display); font-weight: 650; font-size: 1.08rem; padding: 0; margin-bottom: 10px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt { cursor: pointer; display: block; }
+.opt > span {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface);
+  transition: border-color .2s, background-color .2s;
+}
+.opt > span b { font-size: 1rem; }
+.opt > span small { color: var(--muted); font-size: .84rem; }
+.opt input:checked + span { border-color: var(--accent); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent); }
+.opt input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.results { display: flex; flex-direction: column; gap: 8px; }
+.res-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: 1px; }
+.moods { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.moods .opt > span { align-items: center; text-align: center; padding: 12px 4px; gap: 8px; }
+.moods .orb { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); }
+.moods small { font-size: .74rem !important; line-height: 1.2; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips .opt > span { padding: 9px 14px; border-radius: 99px; font-weight: 700; font-size: .9rem; }
+textarea { width: 100%; min-height: 96px; resize: vertical; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); }
+.after { padding: 18px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--accent); display: flex; flex-direction: column; gap: 8px; }
+.after a { color: var(--accent); font-weight: 700; }
+
+/* ── Journal ── */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { padding: 14px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile b { font-family: var(--f-display); font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.tile span { font-size: .76rem; color: var(--muted); line-height: 1.25; }
+.cal { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.cal div { aspect-ratio: 1; max-width: 100%; border-radius: 7px; border: 1px solid var(--line); display: grid; place-items: center; font-size: .68rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cal .r-reussi { background: var(--ok); color: var(--on-sem); border-color: transparent; }
+.cal .r-ecart { background: var(--warn); color: var(--on-sem); border-color: transparent; }
+.cal .r-craque { background: var(--bad); color: var(--on-sem); border-color: transparent; }
+.gchart svg { width: 100%; height: auto; display: block; }
+.cal .today { outline: 2px solid var(--fg); outline-offset: 1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
+.chart { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.chart .yax { display: flex; flex-direction: column; justify-content: space-between; font-size: .7rem; color: var(--muted); padding-bottom: 18px; text-align: right; }
+.bars { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; height: 130px; border-bottom: 1px solid var(--line); background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% 25%; position: relative; }
+.bars div { border-radius: 5px 5px 2px 2px; background: var(--accent); min-height: 0; }
+.bars div.none { background: transparent; }
+.xax { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; font-size: .64rem; color: var(--muted); text-align: center; margin-top: 4px; }
+.trig { display: flex; flex-direction: column; gap: 8px; }
+.trig-row { display: grid; grid-template-columns: 7.5rem 1fr 2rem; gap: 10px; align-items: center; font-size: .88rem; }
+.trig-row .track { height: 8px; }
+.trig-row .num { text-align: right; color: var(--muted); }
+.entries { display: flex; flex-direction: column; gap: 10px; }
+.entry { padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.entry-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.entry-h b { text-transform: capitalize; }
+.chip { display: inline-flex; align-items: center; font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.chip.reussi { background: var(--ok); color: var(--on-sem); }
+.chip.ecart { background: var(--warn); color: var(--on-sem); }
+.chip.craque { background: var(--bad); color: var(--on-sem); }
+.entry .meta { font-size: .86rem; color: var(--muted); }
+.entry .note { font-style: italic; overflow-wrap: anywhere; }
+.entry button { align-self: flex-start; background: none; border: none; padding: 0; color: var(--accent); font-weight: 700; cursor: pointer; font-size: .86rem; }
+.settings { display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 18px; border: 1px solid var(--line); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+input[type="date"] { padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); min-width: 0; }
+.empty-state { padding: 22px 18px; border-radius: 18px; border: 1.5px dashed var(--line); color: var(--muted); display: flex; flex-direction: column; gap: 10px; }
+.empty-state a { color: var(--accent); font-weight: 700; }
+.section { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Onglets ── */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  transition: background-color 1.4s var(--ease);
+}
+.tabs-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.tabs a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; text-decoration: none; font-size: .72rem; font-weight: 700; color: var(--muted); border-radius: 12px; }
+.tabs a svg { width: 24px; height: 24px; }
+.tabs a[aria-current="page"] { color: var(--accent); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 50;
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 99px;
+  font-weight: 700; font-size: .9rem; max-width: calc(100vw - 32px); text-align: center;
+  transition: transform .35s var(--ease), opacity .35s;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div id="sky" aria-hidden="true"><div id="sun"></div></div>
+<div id="flash" aria-hidden="true"></div>
+<main class="app" id="app"></main>
+
+<nav class="tabs" aria-label="Navigation">
+  <div class="tabs-in">
+    <a href="#aujourdhui" data-tab="aujourdhui">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>
+      Aujourd'hui
+    </a>
+    <a href="#parcours" data-tab="parcours">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a3.5 3.5 0 0 0 0-7h-4a3.5 3.5 0 0 1 0-7h6"/></svg>
+      Parcours
+    </a>
+    <a href="#bilan" data-tab="bilan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+      Bilan du soir
+    </a>
+    <a href="#journal" data-tab="journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>
+      Journal
+    </a>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ═══════════ Contenu du plan ═══════════ */
+const PHASES = [
+  { id: "p0", label: "Phase 0", name: "Préparation", when: "J-10 à J-1", light: "Avant l'aube", steps: [
+    { id: "s01", title: "Auto-diagnostic : où en es-tu ?", tag: "Connaissance de soi",
+      detail: `Réponds honnêtement à ces 5 questions, sur papier si possible :
+<ul>
+<li>Consommes-tu du sucre ajouté chaque jour, même sans faim ?</li>
+<li>As-tu des envies irrésistibles en fin d'après-midi ou après un repas ?</li>
+<li>Te sens-tu irritable ou fatigué si tu sautes une douceur ?</li>
+<li>Manges-tu du sucre pour gérer un stress ou une émotion ?</li>
+<li>As-tu déjà essayé d'arrêter sans succès durable ?</li>
+</ul>` },
+    { id: "s02", title: "Fixer une date d'arrêt précise : le Jour J", tag: "Engagement",
+      detail: `Choisir une date dans <strong>10 à 14 jours</strong>. Idéalement un vendredi ou le début d'un mois lunaire. Marquer cette date partout : téléphone, réfrigérateur, miroir. On l'appelle le <strong>Jour J</strong>.<p>Enregistre-la aussi dans l'onglet Aujourd'hui : le compteur démarrera ce jour-là.</p>` },
+    { id: "s03", title: "Déclaration d'intention formelle", tag: "Spirituel",
+      detail: `Prier 2 rak'ates. Puis dire à voix haute : <em>« Yâ Allah, je prends l'engagement solennel de libérer mon corps de l'esclavage du sucre à partir de [date]. Je le fais pour respecter l'amana de ce corps que Tu m'as confié. Aide-moi et fortifie ma volonté. »</em>` },
+    { id: "s04", title: "Journal des déclencheurs pendant 10 jours", tag: "Observation",
+      detail: `À chaque envie ou consommation de sucre, noter en quelques secondes :
+<ul>
+<li>L'heure et le lieu</li>
+<li>L'émotion ressentie</li>
+<li>Le niveau de faim réelle (1 à 10)</li>
+</ul>
+<p>Après 10 jours, identifier tes <strong>3 déclencheurs principaux</strong> : stress, ennui, fatigue, récompense, social. Le bilan du soir les compte pour toi dans le Journal.</p>` },
+    { id: "s05", title: "Purge de l'environnement (la veille du Jour J)", tag: "Action concrète",
+      detail: `Jeter ou donner sans exception :
+<ul>
+<li>Sodas, jus industriels, boissons énergisantes</li>
+<li>Biscuits, viennoiseries, bonbons, chocolats au lait</li>
+<li>Céréales sucrées, sauces industrielles, yaourts aromatisés</li>
+<li>Vider les tiroirs du bureau et la boîte à gants de la voiture</li>
+</ul>
+<p><strong>On ne peut pas résister à ce qui n'est pas là.</strong></p>` },
+    { id: "s06", title: "Préparer les alternatives : faire les courses", tag: "Préparation",
+      detail: `Avoir en stock avant le Jour J :
+<ul>
+<li>Fruits frais et secs (dattes, figues, abricots)</li>
+<li>Oléagineux (amandes, noix, noix de cajou)</li>
+<li>Chocolat noir 85 %+</li>
+<li>Eau pétillante, tisanes (cannelle, réglisse)</li>
+<li>Glucides complexes : légumineuses, patate douce, flocons d'avoine</li>
+</ul>` },
+  ]},
+  { id: "p1", label: "Phase 1", name: "Détox", when: "Jour J · 10 premiers jours", light: "Première lueur", steps: [
+    { id: "s07", title: "Routine du matin du Jour J", tag: "Rituel",
+      detail: `<ul>
+<li>Se lever avec un <strong>verre d'eau citronnée</strong> (stabilise la glycémie au réveil)</li>
+<li>Faire salat al-Fajr</li>
+<li><strong>Petit-déjeuner protéiné et gras</strong> : œufs, avocat, fromage, pain complet. Il réduit de 60 % les envies sucrées dans la matinée</li>
+<li>Reconfirmer son intention à voix haute</li>
+</ul>` },
+    { id: "s08", title: "Maîtriser la technique des 4R face aux envies", tag: "Outil anti-crise",
+      detail: `À chaque envie intense, dans l'ordre :
+<ul>
+<li><strong>Reconnais</strong> : nommer l'envie sans la juger, « J'ai une envie de sucre »</li>
+<li><strong>Respire</strong> : 3 respirations, 4 s inspire, 4 s retiens, 6 s expire. Dire <em>Astaghfirullah</em></li>
+<li><strong>Remplace</strong> : manger une datte et des amandes, ou boire une tisane chaude</li>
+<li><strong>Retarde</strong> : « J'attends 10 minutes, puis je décide. » L'envie dure 5 à 10 min au maximum</li>
+</ul>` },
+    { id: "s09", title: "Mettre en place le protocole glycémique", tag: "Alimentation",
+      detail: `<ul>
+<li><strong>3 vrais repas</strong> par jour à heures fixes, ne pas sauter de repas</li>
+<li>Commencer chaque repas par des légumes ou des protéines</li>
+<li><strong>2 litres d'eau</strong> par jour minimum (la soif est souvent confondue avec une envie sucrée)</li>
+<li><strong>Collation d'urgence</strong> : 2 dattes et 10 amandes</li>
+<li>Manger assis, sans écran</li>
+</ul>` },
+    { id: "s10", title: "Gérer les symptômes de sevrage", tag: "Santé",
+      detail: `Ces symptômes sont normaux et passagers :
+<ul>
+<li><strong>Maux de tête</strong> → eau, magnésium (amandes, épinards), sel non raffiné</li>
+<li><strong>Fatigue</strong> → dormir 7 à 8 h, éviter les efforts intenses les 3 premiers jours</li>
+<li><strong>Irritabilité</strong> → s'asseoir, faire les ablutions, prier 2 rak'ates</li>
+<li><strong>Envies nocturnes</strong> → se brosser les dents juste après le dîner (signal de fin de repas)</li>
+</ul>` },
+  ]},
+  { id: "p2", label: "Phase 2", name: "Restructuration", when: "Semaines 2 et 3", light: "Aurore", steps: [
+    { id: "s11", title: "Remplacer systématiquement les rituels sucrés", tag: "Habitudes",
+      detail: `<ul>
+<li>Café ou thé sucré du matin → <strong>café noir ou thé à la cannelle</strong></li>
+<li>Gâteau avec le thé → <strong>dattes et oléagineux</strong></li>
+<li>Dessert après le repas → <strong>fruit frais entier et tisane</strong></li>
+<li>Soda ou jus → <strong>eau pétillante et rondelle de citron</strong></li>
+<li>Chocolat au lait en soirée → <strong>carré de chocolat noir 85 %+</strong></li>
+<li>Viennoiserie du week-end → <strong>pancakes avoine-banane maison</strong></li>
+</ul>` },
+    { id: "s12", title: "Apprendre à lire les étiquettes et débusquer le sucre caché", tag: "Éducation",
+      detail: `Le sucre se cache sous plus de <strong>60 noms différents</strong>. Les principaux à repérer :
+<ul>
+<li>Sirop de glucose-fructose, dextrose, maltose</li>
+<li>Sirop d'agave, sucre de canne, jus de fruit concentré</li>
+<li>Amidon modifié</li>
+</ul>
+<p><strong>Règle simple</strong> : si l'un de ces termes figure parmi les 3 premiers ingrédients, reposer le produit.</p>` },
+    { id: "s13", title: "Désamorcer les états HALT", tag: "Psychologie",
+      detail: `80 % des rechutes surviennent dans l'un de ces 4 états :
+<ul>
+<li><strong>Faim</strong> → ne jamais laisser plus de 4 à 5 h entre deux repas, prévoir une collation protéinée</li>
+<li><strong>Colère, stress</strong> → 5 min de marche rapide ou dhikr intense plutôt que du sucre</li>
+<li><strong>Ennui, solitude</strong> → planifier à l'avance les moments vides qui déclenchent les envies</li>
+<li><strong>Fatigue</strong> → une envie sucrée à 15 h est souvent une envie de sommeil : sieste de 20 min</li>
+</ul>` },
+    { id: "s14", title: "Mettre en place un système de responsabilité partagée", tag: "Engagement social",
+      detail: `<p>Choisir une personne de confiance et lui donner ce mandat : <em>« Je m'engage à arrêter le sucre ajouté. Pose-moi chaque soir pendant 30 jours la question : "As-tu tenu aujourd'hui ?" Je m'engage à te répondre la vérité. »</em></p><p>Le <strong>coût social de la rechute</strong> équilibre l'attraction neurologique du sucre.</p>` },
+  ]},
+  { id: "p3", label: "Phase 3", name: "Recâblage", when: "Semaine 4 à 3 mois", light: "Lever du soleil", steps: [
+    { id: "s15", title: "Intégrer le jeûne du lundi et du jeudi", tag: "Spirituel et métabolisme",
+      detail: `À partir de la 4e semaine, intégrer ces deux jeûnes hebdomadaires :
+<ul>
+<li>Ils resynchronisent le métabolisme</li>
+<li>Ils réduisent la résistance à l'insuline</li>
+<li>Ils entraînent le cerveau à distinguer la vraie faim du désir conditionné</li>
+<li>2 jours de <strong>réinitialisation neurologique</strong> par semaine</li>
+</ul>` },
+    { id: "s16", title: "Restructurer l'assiette sur le long terme", tag: "Nutrition",
+      detail: `<ul>
+<li><strong>Glucides</strong> → légumineuses, patate douce, flocons d'avoine, pain complet (éviter riz, pâtes et pain blancs)</li>
+<li><strong>Sucrants</strong> → dattes entières, miel brut en petite quantité (éviter tout sucre raffiné et les édulcorants)</li>
+<li><strong>Boissons</strong> → eau, thé sans sucre, tisanes (zéro soda, jus, boisson énergisante)</li>
+<li><strong>Snacks</strong> → oléagineux, chocolat noir 85 %+ (zéro biscuit, barre industrielle)</li>
+<li><strong>Sauces</strong> → huile d'olive et citron, épices, tomates fraîches (zéro ketchup, BBQ, vinaigrette industrielle)</li>
+</ul>` },
+    { id: "s17", title: "10 000 pas par jour, le régulateur glycémique", tag: "Mouvement",
+      detail: `La marche est le régulateur glycémique le plus efficace et accessible :
+<ul>
+<li>Une marche de <strong>15 minutes après le repas</strong> réduit de 30 % le pic de glycémie</li>
+<li>Le stress chronique (cortisol élevé) alimente l'addiction au sucre : gérer le stress réduit les envies</li>
+</ul>` },
+    { id: "s18", title: "Méditation de gratitude corporelle (1 fois par semaine)", tag: "Pratique intérieure",
+      detail: `<p>Dans un endroit calme, fermer les yeux et poser les mains sur le ventre. Visualiser :</p><p>Mon pancréas qui travaille moins durement. Mes artères qui se dégagent. Mon énergie qui se stabilise.</p><p><em>Remercier Allah pour ce corps qui se répare.</em></p><p>Cette pratique renforce la motivation intrinsèque et contrebalance le discours du manque.</p>` },
+  ]},
+  { id: "p4", label: "Phase 4", name: "Maintenance à vie", when: "À partir de 3 mois", light: "Plein jour", steps: [
+    { id: "s19", title: "Appliquer la règle d'or : zéro sucre ajouté à vie", tag: "Règle fondamentale",
+      detail: `Un cerveau anciennement dépendant réactive ses circuits dès la première rechute intense.
+<ul>
+<li>Pas d'exception pour les fêtes, mariages ou « juste pour goûter »</li>
+<li>Le sucre <strong>naturel des fruits entiers</strong> reste autorisé et sain</li>
+<li>C'est le sucre ajouté et industriel qu'on écarte définitivement</li>
+</ul>` },
+    { id: "s20", title: "Ancrer les rituels permanents anti-rechute", tag: "Rituels",
+      detail: `<ul>
+<li>Dou'a du matin : <em>« Yâ Allah, garde-moi loin de ce dont Tu m'as libéré. »</em></li>
+<li>Jeûne hebdomadaire lundi et jeudi</li>
+<li>Bilan médical annuel : glycémie à jeun, HbA1c, bilan lipidique. Voir les résultats s'améliorer</li>
+<li>Calculer ce qui est économisé chaque mois et en donner une partie en sadaqa</li>
+</ul>` },
+    { id: "s21", title: "Savoir gérer une rechute sans s'effondrer", tag: "Résilience",
+      detail: `<p>Si tu craques, ne te noie pas dans la culpabilité : la culpabilité elle-même déclenche une nouvelle envie de sucre pour se consoler.</p><p>Le protocole de la rechute :</p>
+<ul>
+<li>Reconnais sans te juger</li>
+<li>Respire et fais les ablutions</li>
+<li>Remplace et repars dès le prochain repas</li>
+</ul>
+<p><em>« Certes, Allah aime ceux qui se repentent et aime ceux qui se purifient. » (Coran 2:222)</em></p>` },
+  ]},
+];
+
+const STEPS = [];
+PHASES.forEach((p, pi) => p.steps.forEach(s => STEPS.push({ ...s, phase: p, pi, i: STEPS.length })));
+const N = STEPS.length;
+const BY_ID = Object.fromEntries(STEPS.map(s => [s.id, s]));
+const stepLevel = i => 0.07 + 0.93 * (i + 1) / N;
+
+const RESULTS = {
+  reussi: { label: "Réussi", long: "Aucun sucre ajouté", hint: "La plante grandit d'un jour" },
+  ecart:  { label: "Un produit sucré", long: "J'ai mangé un produit sucré", hint: "Un dessert, un soda, un biscuit… La croissance s'arrête ce jour-là" },
+  craque: { label: "Craqué", long: "J'ai craqué, beaucoup de sucre", hint: "La plante recule d'une étape de croissance" },
+};
+const STAGES = [
+  { at: 0,  name: "Graine",  short: "Graine" },
+  { at: 3,  name: "Germe",   short: "Germe" },
+  { at: 7,  name: "Jeune pousse", short: "Pousse" },
+  { at: 14, name: "Plante",  short: "Plante" },
+  { at: 30, name: "Fleur",   short: "Fleur" },
+  { at: 60, name: "Arbuste", short: "Arbuste" },
+  { at: 90, name: "Arbre",   short: "Arbre" },
+];
+const GOAL = 90;
+const MOODS = ["Très mal", "Pas bien", "Neutre", "Bien", "Libre"];
+const CRAVES = ["Aucune", "Légères", "Fortes", "Très fortes"];
+const TRIGGERS = { faim: "Faim", stress: "Stress ou colère", ennui: "Ennui ou solitude", fatigue: "Fatigue", social: "Repas, fête, invitation", habitude: "Habitude" };
+
+/* ═══════════ Dates ═══════════ */
+const pad = n => String(n).padStart(2, "0");
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const todayKey = () => keyOf(new Date());
+const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); };
+const diffDays = (a, b) => Math.round((parseKey(b) - parseKey(a)) / 864e5);
+const fmt = (k, o) => parseKey(k).toLocaleDateString("fr-FR", o || { day: "numeric", month: "long" });
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ═══════════ Données : base privée de l'utilisateur, sinon cet appareil ═══════════ */
+const LS_V2 = "liberation_sucre_v2", LS_V1 = "sucre_progress_v1";
+let S = { done: {}, start: null };   // étapes accomplies, Jour J
+let C = {};                          // bilans par date
+let db = null, progRef = null, ciCol = null;
+
+function lsLoad() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LS_V2) || "null");
+    if (v) { S = { done: v.S?.done || {}, start: v.S?.start || null }; C = v.C || {}; return; }
+    const old = JSON.parse(localStorage.getItem(LS_V1) || "null");
+    if (old) for (const k in old) if (old[k] && BY_ID[k]) S.done[k] = "";
+  } catch (e) {}
+}
+function lsSave() { try { localStorage.setItem(LS_V2, JSON.stringify({ S, C })); } catch (e) {} }
+const clone = o => JSON.parse(JSON.stringify(o));
+
+let chain = Promise.resolve();
+function queueWrite(fn) {
+  chain = chain.then(fn).catch(e => {
+    console.warn(e);
+    toast("Enregistré sur cet appareil uniquement");
+  });
+}
+function saveProgress() { lsSave(); if (progRef) queueWrite(() => progRef.set(clone(S))); }
+function saveCheckin(date, entry) {
+  C[date] = entry; lsSave();
+  if (ciCol) queueWrite(() => ciCol.doc(date).set(clone(entry)));
+}
+
+async function connect() {
+  try {
+    if (!window.claude || typeof window.claude.use !== "function") return;
+    const [d, u] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!d || !u) return;
+    const id = await u.id();
+    if (!id) return;
+    db = d;
+    progRef = db.doc("data/users/" + id + "/progress");
+    ciCol = progRef.collection("checkins");
+    let firstP = true, firstC = true;
+    progRef.onSnapshot(snap => {
+      if (snap.exists) {
+        const v = snap.data();
+        S = { done: { ...(v.done || {}) }, start: v.start || null };
+        lsSave(); render(true);
+      } else if (firstP && !snap.metadata.fromCache && (Object.keys(S.done).length || S.start)) {
+        queueWrite(() => progRef.set(clone(S)));   // reprise de la progression déjà cochée sur cet appareil
+      }
+      if (!snap.metadata.fromCache) firstP = false;
+    }, () => {});
+    ciCol.onSnapshot(snap => {
+      if (snap.empty && firstC && Object.keys(C).length) {
+        if (!snap.metadata.fromCache) { for (const k in C) { const e = clone(C[k]); queueWrite(() => ciCol.doc(k).set(e)); } firstC = false; }
+        return;
+      }
+      const remote = {};
+      snap.docs.forEach(doc => { remote[doc.id] = { ...doc.data() }; });
+      C = remote; lsSave(); render(true);
+      if (!snap.metadata.fromCache) firstC = false;
+    }, () => {});
+  } catch (e) { console.warn(e); }
+}
+
+/* ═══════════ Calculs ═══════════ */
+/* Croissance : on rejoue les bilans dans l'ordre depuis le Jour J.
+   Sans sucre → +1 jour · un produit sucré → la croissance s'arrête ce jour-là
+   · craqué → retour au début de l'étape de croissance précédente. */
+const stageOf = g => { let i = 0; STAGES.forEach((s, j) => { if (g >= s.at) i = j; }); return i; };
+function growth() {
+  const t = todayKey();
+  const keys = Object.keys(C).sort().filter(k => k <= t && (!S.start || k >= S.start));
+  let g = 0, best = 0;
+  const log = [];
+  for (const k of keys) {
+    const r = C[k].result;
+    const before = g;
+    if (r === "reussi") g = Math.min(GOAL, g + 1);
+    else if (r === "craque") { const si = stageOf(g); g = si > 0 ? STAGES[si - 1].at : 0; }
+    best = Math.max(best, g);
+    log.push({ k, r, g, before });
+  }
+  return { g, si: stageOf(g), best, log, last: log[log.length - 1] || null, total: keys.filter(k => C[k].result === "reussi").length };
+}
+const doneCount = () => STEPS.filter(s => s.id in S.done).length;
+const homeLevel = () => 0.05 + 0.95 * growth().g / GOAL;
+
+/* ═══════════ La plante ═══════════ */
+const PC = { soil: "#7a5f50", soilTop: "#8d7060", seed: "#b08868", stem: "#5fae86", leaf: "#7cc79c", leaf2: "#55a47f", wood: "#8d6b56", wood2: "#a5806a", petal: "#f3b3c0", petal2: "#f7cdd6", heart: "#f4d78b", root: "#e9dccf" };
+const f1 = n => Math.round(n * 10) / 10;
+const leaf = (x, y, ang, len, fill) => `<path d="M0 0Q${f1(len * .5)} ${f1(-len * .34)} ${f1(len)} 0Q${f1(len * .5)} ${f1(len * .34)} 0 0Z" fill="${fill}" transform="translate(${f1(x)} ${f1(y)}) rotate(${ang})"/>`;
+const flower = (cx, cy, r, n = 6) => {
+  let s = "";
+  for (let k = 0; k < n; k++) s += `<ellipse cx="${f1(cx)}" cy="${f1(cy - r * .55)}" rx="${f1(r * .34)}" ry="${f1(r * .58)}" fill="${k % 2 ? PC.petal2 : PC.petal}" transform="rotate(${k * 360 / n} ${f1(cx)} ${f1(cy)})"/>`;
+  return s + `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r * .3)}" fill="${PC.heart}"/>`;
+};
+function plantSVG(g, label) {
+  const si = stageOf(g), st = STAGES[si], nx = STAGES[si + 1];
+  const t = nx ? (g - st.at) / (nx.at - st.at) : 1;
+  const BX = 100, BY = 168;
+  let s = `<ellipse cx="100" cy="178" rx="74" ry="15" fill="${PC.soil}"/><ellipse cx="100" cy="172" rx="58" ry="8" fill="${PC.soilTop}"/>`;
+  const stem = (h, bend, w) => {
+    const pt = u => [BX + 2 * u * (1 - u) * bend, BY - h * u];
+    return { svg: `<path d="M${BX} ${BY}Q${f1(BX + bend)} ${f1(BY - h / 2)} ${BX} ${f1(BY - h)}" stroke="${PC.stem}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`, pt };
+  };
+  if (si === 0) {
+    s += `<ellipse cx="100" cy="171" rx="8" ry="5.5" fill="${PC.seed}" transform="rotate(-18 100 171)"/>`;
+    if (t > .3) s += `<path d="M97 169.5q3 1.2 6 -1" stroke="${PC.soil}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+    if (t > .6) s += `<path d="M101 176q-1 4 2 7" stroke="${PC.root}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+  } else if (si === 1) {
+    const S1 = stem(16 + 14 * t, 5, 3), [x, y] = S1.pt(1);
+    s += `<ellipse cx="88" cy="171" rx="6" ry="3.5" fill="${PC.seed}" opacity=".8" transform="rotate(20 88 171)"/>` + S1.svg;
+    s += leaf(x, y, -158, 11 + 6 * t, PC.leaf) + leaf(x, y, -22, 11 + 6 * t, PC.leaf2);
+  } else if (si === 2) {
+    const S2 = stem(36 + 22 * t, 7, 3.5), [x, y] = S2.pt(1), [x2, y2] = S2.pt(.45);
+    s += S2.svg + leaf(x2, y2, -170, 10, PC.leaf2) + leaf(x2, y2, -10, 10, PC.leaf);
+    s += leaf(x, y, -145, 16 + 7 * t, PC.leaf) + leaf(x, y, -35, 16 + 7 * t, PC.leaf2);
+    if (t > .5) s += leaf(x, y, -92, 9, PC.leaf);
+  } else if (si === 3) {
+    const S3 = stem(62 + 30 * t, 8, 4), [x, y] = S3.pt(1);
+    s += S3.svg;
+    [[.3, 20], [.55, 18], [.78, 15]].forEach(([u, L], i) => { const [a, b] = S3.pt(u); s += leaf(a, b, i % 2 ? -160 : -150, L + 4 * t, PC.leaf2) + leaf(a, b, i % 2 ? -25 : -18, L + 4 * t, PC.leaf); });
+    if (t > .55) s += `<ellipse cx="${f1(x)}" cy="${f1(y - 4)}" rx="4" ry="6" fill="${PC.petal}"/>` + leaf(x, y, -120, 7, PC.leaf2) + leaf(x, y, -60, 7, PC.leaf2);
+    else s += leaf(x, y, -130, 12, PC.leaf) + leaf(x, y, -50, 12, PC.leaf2);
+  } else if (si === 4) {
+    const S4 = stem(94 + 18 * t, 9, 4.5), [x, y] = S4.pt(1);
+    s += S4.svg;
+    [[.22, 22], [.42, 20], [.62, 17]].forEach(([u, L], i) => { const [a, b] = S4.pt(u); s += leaf(a, b, i % 2 ? -165 : -150, L, PC.leaf2) + leaf(a, b, i % 2 ? -28 : -15, L, PC.leaf); });
+    if (t > .4) { const [a, b] = S4.pt(.5); s += `<path d="M${f1(a)} ${f1(b)}q16 -6 26 -22" stroke="${PC.stem}" stroke-width="3" fill="none" stroke-linecap="round"/>` + flower(a + 26, b - 24, 8 + 4 * t); }
+    if (t > .75) { const [a, b] = S4.pt(.38); s += `<path d="M${f1(a)} ${f1(b)}q-16 -4 -24 -18" stroke="${PC.stem}" stroke-width="3" fill="none" stroke-linecap="round"/>` + flower(a - 24, b - 20, 9); }
+    s += flower(x, y - 4, 12 + 6 * t);
+  } else if (si === 5) {
+    const k = .82 + .18 * t;
+    let g5 = `<path d="M94 168 L97 138 L103 138 L106 168Z" fill="${PC.wood}"/>`;
+    g5 += [["M99 142 Q86 128 72 116", 5], ["M100 140 Q101 122 100 104", 5], ["M101 142 Q116 128 128 114", 5]].map(([d, w]) => `<path d="${d}" stroke="${PC.wood}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`).join("");
+    const blobs = [[72, 112, 20], [128, 110, 20], [100, 98, 22], [84, 92, 17], [116, 90, 17], [100, 120, 16], [60, 124, 13], [140, 122, 13]];
+    blobs.forEach(([cx, cy, r], i) => { g5 += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${i % 2 ? PC.leaf2 : PC.leaf}"/>`; });
+    const fl = [[78, 100], [118, 96], [100, 84], [66, 118], [134, 116], [92, 114], [110, 108]];
+    fl.slice(0, 3 + Math.round(4 * t)).forEach(([cx, cy]) => { g5 += flower(cx, cy, 6); });
+    s += `<g transform="translate(100 168) scale(${f1(k * 100) / 100}) translate(-100 -168)">${g5}</g>`;
+  } else {
+    let g6 = `<path d="M90 170 Q94 140 95 104 L105 104 Q106 140 110 170Z" fill="${PC.wood}"/><path d="M98 168 Q99 140 99 108" stroke="${PC.wood2}" stroke-width="2" fill="none"/>`;
+    g6 += [["M97 120 Q80 106 66 96", 6], ["M103 116 Q120 104 134 94", 6], ["M100 108 Q100 90 100 70", 6]].map(([d, w]) => `<path d="${d}" stroke="${PC.wood}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`).join("");
+    [[62, 88, 24], [138, 86, 24], [100, 58, 28], [78, 64, 24], [122, 62, 24], [100, 92, 24], [48, 104, 16], [152, 102, 16], [82, 98, 18], [118, 98, 18]]
+      .forEach(([cx, cy, r], i) => { g6 += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${i % 3 === 1 ? PC.leaf2 : PC.leaf}"/>`; });
+    [[70, 76], [126, 72], [100, 46], [88, 90], [114, 86], [56, 98], [146, 96], [100, 70]].forEach(([cx, cy]) => { g6 += flower(cx, cy, 6); });
+    s += g6;
+  }
+  return `<svg viewBox="0 0 200 200" role="img" aria-label="${esc(label || st.name)}">${s}</svg>`;
+}
+const nextStep = () => STEPS.find(s => !(s.id in S.done)) || null;
+
+/* ═══════════ Lumière ═══════════ */
+const STOPS = [[0, "#16233a"], [.3, "#1d3252"], [.55, "#2a4c76"], [.7, "#3e6c9b"], [.8, "#7aaed6"], [.9, "#a6cdea"], [1, "#c6e4f6"]];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const toHex = a => "#" + a.map(v => pad(Math.round(Math.max(0, Math.min(255, v))).toString(16))).join("");
+const mix = (a, b, t) => toHex(hex(a).map((v, i) => v + (hex(b)[i] - v) * t));
+function bgAt(L) {
+  for (let i = 1; i < STOPS.length; i++) {
+    const [p0, c0] = STOPS[i - 1], [p1, c1] = STOPS[i];
+    if (L <= p1) return mix(c0, c1, (L - p0) / (p1 - p0));
+  }
+  return STOPS[STOPS.length - 1][1];
+}
+const lum = h => { const [r, g, b] = hex(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const glowAt = L => mix("#4f7dab", "#dff0fb", Math.min(1, L));
+
+function applyLight(L) {
+  L = Math.max(0, Math.min(1, L));
+  const bg = bgAt(L);
+  const LIGHT = "#eaf3fb", DARK = "#11243b";
+  const darkText = contrast(DARK, bg) > contrast(LIGHT, bg);
+  const fg = darkText ? DARK : LIGHT;
+  const r = document.documentElement.style;
+  r.setProperty("--bg", bg);
+  r.setProperty("--fg", fg);
+  r.setProperty("--muted", mix(fg, bg, .28));
+  r.setProperty("--line", mix(fg, bg, darkText ? .78 : .8));
+  r.setProperty("--surface", mix(fg, bg, darkText ? .9 : .93));
+  r.setProperty("--surface-2", mix(fg, bg, darkText ? .84 : .87));
+  r.setProperty("--accent", darkText ? "#1f4f7a" : "#a9d4f5");
+  r.setProperty("--on-accent", darkText ? "#eef6fc" : "#11243b");
+  r.setProperty("--glow", darkText ? "#f3f9ff" : mix("#2d5583", "#9cc8ec", L));
+  r.colorScheme = darkText ? "light" : "dark";
+  const sun = document.getElementById("sun");
+  sun.style.transform = `translate(-50%, ${70 - L * 92}vh) scale(${.45 + L * .75})`;
+  sun.style.opacity = (.12 + L * .38).toFixed(2);
+}
+
+/* ═══════════ Interface ═══════════ */
+const app = document.getElementById("app");
+let view = "aujourdhui", editDate = null, resetArmed = false;
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+function flash() { const f = document.getElementById("flash"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go"); }
+
+function raysHTML(currentId) {
+  return `<div class="rays" role="img" aria-label="${doneCount()} étapes accomplies sur ${N}">` + STEPS.map(s => {
+    const on = s.id in S.done;
+    const st = on ? `background:${glowAt(stepLevel(s.i))};box-shadow:0 0 8px -2px ${glowAt(stepLevel(s.i))}` : "";
+    return `<a href="#${s.id}" class="${on ? "on" : ""} ${s.id === currentId ? "here" : ""}" style="${st}" aria-label="Étape ${s.i + 1}"></a>`;
+  }).join("") + `</div>`;
+}
+
+function dayWord(k) {
+  const t = todayKey();
+  return k === t ? "Aujourd'hui" : k === addDays(t, -1) ? "Hier" : "Le " + fmt(k);
+}
+const plural = (n, w) => `${n} ${w}${n > 1 ? "s" : ""}`;
+
+function viewToday() {
+  const t = todayKey(), G = growth(), dc = doneCount(), nx = nextStep();
+  const st = STAGES[G.si], nxs = STAGES[G.si + 1];
+  const future = S.start && S.start > t;
+  const into = nxs ? Math.round((G.g - st.at) / (nxs.at - st.at) * 100) : 100;
+  let note;
+  if (future) note = `La graine sera plantée le ${fmt(S.start, { weekday: "long", day: "numeric", month: "long" })}, dans ${plural(diffDays(t, S.start), "jour")}.`;
+  else if (!G.last) note = "Chaque bilan du soir sans sucre fait grandir la plante d'un jour.";
+  else if (G.last.r === "reussi") note = `${dayWord(G.last.k)} : sans sucre, la plante a grandi.`;
+  else if (G.last.r === "ecart") note = `${dayWord(G.last.k)} : un produit sucré, la croissance s'est arrêtée ce jour-là. Elle reprend au prochain bilan sans sucre.`;
+  else note = `${dayWord(G.last.k)} : la plante a reculé d'une étape. Elle repousse dès le prochain bilan sans sucre.`;
+
+  const startCard = !S.start ? `<section class="card">
+      <p class="k">Étape 2 du plan</p>
+      <p class="t">Fixez votre Jour J</p>
+      <p class="muted">La graine sera plantée ce jour-là, et seuls les bilans à partir de cette date feront pousser la plante.</p>
+      <div class="row"><label class="vh" for="startInput">Date du Jour J</label><input type="date" id="startInput" value="${t}"><button class="primary" id="startSave" type="button">Enregistrer le Jour J</button></div>
+    </section>` : "";
+
+  const ci = C[t];
+  const hour = new Date().getHours();
+  const evening = ci
+    ? `<a class="card" href="#bilan"><p class="k">Bilan de ce soir</p><p class="t"><span class="res-dot" style="background:var(--${ci.result === "reussi" ? "ok" : ci.result === "ecart" ? "warn" : "bad"})"></span>${RESULTS[ci.result].long}${ci.mood ? " · " + MOODS[ci.mood - 1] : ""}</p><p class="go">Modifier</p></a>`
+    : `<a class="card ${hour >= 18 ? "call" : ""}" href="#bilan"><p class="k">Bilan du soir</p><p class="t">Où en êtes-vous aujourd'hui ?</p><p class="go">${hour >= 18 ? "Arroser ma plante : faire mon bilan" : "À remplir ce soir"} →</p></a>`;
+
+  return `
+  <header class="top"><p class="brand">Libération du Sucre</p><p class="eyebrow">${fmt(t, { weekday: "long", day: "numeric", month: "long" })}</p></header>
+  <section class="grow">
+    <div class="plant">${plantSVG(G.g, st.name + ", " + G.g + " jours de croissance sur " + GOAL)}</div>
+    <p class="eyebrow">Étape de croissance ${G.si + 1} sur ${STAGES.length}</p>
+    <h1 class="stage">${st.name}</h1>
+    <p class="days"><b class="num">${G.g}</b> / ${GOAL} jours de croissance</p>
+    ${nxs ? `<div class="next-mile"><div class="track"><i style="width:${into}%"></i></div><span>Prochaine étape : ${nxs.name} · encore ${plural(nxs.at - G.g, "jour")} sans sucre</span></div>` : `<p class="sub">Votre arbre est adulte. 90 jours de croissance, Machallah.</p>`}
+    <p class="sub">${note}</p>
+  </section>
+  ${startCard}
+  ${evening}
+  <section class="section">
+    <h2>Les 7 étapes de croissance</h2>
+    <div class="stages">${STAGES.map((s, i) => `<div class="stg ${G.g >= s.at ? "lit" : ""} ${i === G.si ? "now" : ""}"><div class="ico">${plantSVG(s.at, s.name)}</div><b>${s.short}</b><span>${s.at === 0 ? "Jour J" : "J" + s.at}</span></div>`).join("")}</div>
+  </section>
+  <section class="light card">
+    <div class="light-head"><span class="k">Plan d'action</span><b>${dc} / ${N}</b></div>
+    ${raysHTML(nx?.id)}
+    <p class="muted" style="font-size:.88rem">Chaque étape du plan s'ouvre sur une page plus claire que la précédente.</p>
+  </section>
+  ${nx ? `<a class="card" href="#${nx.id}"><p class="k">Prochaine étape du plan · ${nx.i + 1} sur ${N}</p><p class="t">${nx.title}</p><p class="go">Ouvrir l'étape →</p></a>`
+       : `<div class="card"><p class="k">Plan terminé</p><p class="t">Les 21 étapes du plan sont accomplies.</p></div>`}
+  <a class="sos" href="#s08"><span>Envie de sucre maintenant ?<small>La technique des 4R, en 10 minutes</small></span><span aria-hidden="true">→</span></a>
+  `;
+}
+
+function viewPath() {
+  const dc = doneCount();
+  return `
+  <header class="section">
+    <p class="eyebrow">Parcours · ${dc} sur ${N}</p>
+    <h1>Plan d'action</h1>
+    <p class="muted">Chaque étape du plan s'ouvre sur un ciel plus clair que la précédente. Touchez une étape pour l'ouvrir.</p>
+  </header>
+  ${PHASES.map(p => `
+    <section class="phase">
+      <div class="phase-h"><h2>${p.label} · ${p.name}</h2><span class="when">${p.when}</span></div>
+      <p class="eyebrow" style="margin-bottom:4px">${p.light}</p>
+      ${p.steps.map((s0, j) => { const s = BY_ID[s0.id]; const done = s.id in S.done; const g = glowAt(stepLevel(s.i));
+        return `<a class="node ${done ? "done" : ""} ${j === 0 ? "first" : ""} ${j === p.steps.length - 1 ? "last" : ""}" href="#${s.id}">
+          <span class="dot" style="${done ? `background:${g};box-shadow:0 0 ${8 + s.i}px -2px ${g}` : `border-color:${mix(g, "#808080", .35)}`}">${s.i + 1}</span>
+          <span style="min-width:0"><span class="nt" style="display:block">${s.title}</span><span class="ns">${done ? "Accomplie" : s.tag}</span></span>
+          <span class="chev" aria-hidden="true">›</span></a>`; }).join("")}
+    </section>`).join("")}
+  `;
+}
+
+function viewStep(id) {
+  const s = BY_ID[id];
+  const done = s.id in S.done;
+  const prev = STEPS[s.i - 1], next = STEPS[s.i + 1];
+  const lvl = Math.round(stepLevel(s.i) * 100);
+  return `
+  <nav class="crumb"><a href="#parcours">← Parcours</a><span class="muted num">Étape ${s.i + 1} sur ${N}</span></nav>
+  <p class="eyebrow">${s.phase.label} · ${s.phase.name} · ${s.phase.light}</p>
+  <div class="stepno">${pad(s.i + 1)}</div>
+  <h1>${s.title}</h1>
+  <span class="tag">${s.tag}</span>
+  ${raysHTML(s.id)}
+  <p class="lux"><span>Lumière de cette étape</span><span class="num">${lvl} %</span></p>
+  <article class="detail">${s.detail}</article>
+  ${done
+    ? `<div class="donebadge"><b>✓</b><span>Étape accomplie${S.done[s.id] ? " le " + fmt(S.done[s.id]) : ""}.</span></div>
+       <button class="ghost" id="stepToggle" type="button">Marquer comme non accomplie</button>`
+    : `<button class="primary" id="stepToggle" type="button">J'ai accompli cette étape</button>`}
+  <div class="pager">
+    ${prev ? `<a href="#${prev.id}">← Étape ${prev.i + 1}<span>${prev.title}</span></a>` : `<span class="empty"></span>`}
+    ${next ? `<a class="nx" href="#${next.id}">Étape ${next.i + 1} →<span>${next.title}</span></a>` : `<span class="empty"></span>`}
+  </div>
+  `;
+}
+
+function viewCheckin() {
+  const t = todayKey(), y = addDays(t, -1);
+  const date = editDate || t;
+  const e = C[date] || {};
+  const dateChoices = [t, y].includes(date) ? [t, y] : [date, t];
+  return `
+  <header class="section">
+    <p class="eyebrow">Bilan du soir</p>
+    <h1>Où en êtes-vous aujourd'hui ?</h1>
+  </header>
+  <form id="ciForm" novalidate>
+    <fieldset>
+      <legend>Jour du bilan</legend>
+      <div class="seg">${dateChoices.map(d => `<label class="opt"><input class="vh" type="radio" name="date" id="d-${d}" value="${d}" ${d === date ? "checked" : ""}><span><b>${d === t ? "Aujourd'hui" : d === y ? "Hier" : fmt(d)}</b><small>${fmt(d, { weekday: "long", day: "numeric", month: "long" })}</small></span></label>`).join("")}</div>
+    </fieldset>
+    <fieldset>
+      <legend>Votre journée</legend>
+      <div class="results">${Object.entries(RESULTS).map(([k, r]) => `<label class="opt"><input class="vh" type="radio" name="result" id="r-${k}" value="${k}" ${e.result === k ? "checked" : ""}><span><b><span class="res-dot" style="background:var(--${k === "reussi" ? "ok" : k === "ecart" ? "warn" : "bad"})"></span>${r.long}</b><small>${r.hint}</small></span></label>`).join("")}</div>
+    </fieldset>
+    <fieldset>
+      <legend>Comment vous sentez-vous ?</legend>
+      <div class="moods">${MOODS.map((m, i) => { const g = mix("#2e5079", "#e3f2fc", i / 4); return `<label class="opt"><input class="vh" type="radio" name="mood" id="m-${i + 1}" value="${i + 1}" ${e.mood === i + 1 ? "checked" : ""}><span><span class="orb" style="background:${g};box-shadow:0 0 ${i * 4}px -1px ${g}"></span><small>${m}</small></span></label>`; }).join("")}</div>
+    </fieldset>
+    <fieldset>
+      <legend>Vos envies de sucre</legend>
+      <div class="chips">${CRAVES.map((c, i) => `<label class="opt"><input class="vh" type="radio" name="crave" id="c-${i}" value="${i}" ${e.crave === i ? "checked" : ""}><span>${c}</span></label>`).join("")}</div>
+    </fieldset>
+    <fieldset>
+      <legend>Ce qui a déclenché les envies</legend>
+      <div class="chips">${Object.entries(TRIGGERS).map(([k, v]) => `<label class="opt"><input class="vh" type="checkbox" name="trig" id="t-${k}" value="${k}" ${(e.triggers || []).includes(k) ? "checked" : ""}><span>${v}</span></label>`).join("")}</div>
+    </fieldset>
+    <fieldset>
+      <legend><label for="ciNote">Un mot sur votre journée</label></legend>
+      <textarea id="ciNote" name="note" placeholder="Ce qui vous a aidé, ce qui a été difficile…">${esc(e.note || "")}</textarea>
+    </fieldset>
+    <button class="primary" type="submit">${C[date] ? "Mettre à jour mon bilan" : "Enregistrer mon bilan"}</button>
+    <div id="after" hidden></div>
+  </form>`;
+}
+
+function afterMessage(result) {
+  const G = growth(), st = STAGES[G.si];
+  const head = (h) => `<p class="t" style="font-family:var(--f-display);font-weight:650">${h}</p>`;
+  if (result === "reussi") return head("Votre plante a grandi d'un jour.") + `<p>Elle en est à ${G.g} jours sur ${GOAL}, étape ${st.name}. Demain matin, reprenez la routine et l'intention.</p><a href="#aujourdhui">Voir ma plante →</a>`;
+  if (result === "ecart") return head("La croissance fait une pause aujourd'hui.") + `<p>Votre plante reste à l'étape ${st.name}, rien n'est perdu. Elle reprendra au prochain bilan sans sucre.</p><a href="#s21">Relire le protocole de la rechute →</a>`;
+  return head("Pas de culpabilité : elle relance l'envie.") + `<p>La plante est revenue à l'étape ${st.name}. Reconnaissez sans vous juger, respirez, faites les ablutions et repartez au prochain repas.</p><a href="#s21">Ouvrir le protocole de la rechute →</a>`;
+}
+
+function growthChart(log) {
+  if (log.length < 2) return `<p class="muted">La courbe de croissance apparaîtra après deux bilans.</p>`;
+  const W = 340, H = 170, L = 58, R = 10, T = 10, B = 24;
+  const n = log.length;
+  const x = i => L + (W - L - R) * i / (n - 1);
+  const y = g => T + (H - T - B) * (1 - g / GOAL);
+  let s = "";
+  [[0, "Graine"], [30, "Fleur"], [60, "Arbuste"], [90, "Arbre"]].forEach(([g, name]) => {
+    s += `<line x1="${L}" x2="${W - R}" y1="${f1(y(g))}" y2="${f1(y(g))}" style="stroke:var(--line)" stroke-width="1"/>`;
+    s += `<text x="${L - 8}" y="${f1(y(g) + 4)}" text-anchor="end" style="fill:var(--muted)" font-size="11">${name}</text>`;
+  });
+  let d = `M${f1(x(0))} ${f1(y(log[0].g))}`;
+  for (let i = 1; i < n; i++) d += `H${f1(x(i))}V${f1(y(log[i].g))}`;
+  const rest = d.slice(d.indexOf("H"));
+  s += `<path d="M${f1(x(0))} ${f1(y(0))}L${f1(x(0))} ${f1(y(log[0].g))}${rest}V${f1(y(0))}Z" style="fill:var(--accent)" opacity=".14"/>`;
+  s += `<path d="${d}" style="stroke:var(--accent)" stroke-width="2.2" fill="none" stroke-linejoin="round"/>`;
+  log.forEach((e, i) => { s += `<circle cx="${f1(x(i))}" cy="${f1(y(e.g))}" r="${n > 40 ? 2 : 3.2}" style="fill:var(--${e.r === "reussi" ? "ok" : e.r === "ecart" ? "warn" : "bad"});stroke:var(--bg)" stroke-width="1"/>`; });
+  s += `<text x="${L}" y="${H - 6}" style="fill:var(--muted)" font-size="11">${fmt(log[0].k)}</text>`;
+  s += `<text x="${W - R}" y="${H - 6}" text-anchor="end" style="fill:var(--muted)" font-size="11">${fmt(log[n - 1].k)}</text>`;
+  return `<div class="gchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe de croissance : ${log[n - 1].g} jours sur ${GOAL}">${s}</svg></div>`;
+}
+
+function viewJournal() {
+  const G = growth(), t = todayKey();
+  const keys = Object.keys(C).sort().reverse();
+  const cal = Array.from({ length: 30 }, (_, i) => addDays(t, i - 29));
+  const last14 = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13));
+  const tc = {}; keys.forEach(k => (C[k].triggers || []).forEach(x => tc[x] = (tc[x] || 0) + 1));
+  const tmax = Math.max(1, ...Object.values(tc));
+  const trig = Object.entries(TRIGGERS).map(([k, v]) => [k, v, tc[k] || 0]).sort((a, b) => b[2] - a[2]);
+  return `
+  <header class="section"><p class="eyebrow">Journal</p><h1>Votre plante, jour après jour</h1></header>
+  <div class="tiles">
+    <div class="tile"><b>${G.g}</b><span>jours de croissance sur ${GOAL}</span></div>
+    <div class="tile"><b style="font-size:1.35rem;line-height:1.15">${STAGES[G.si].name}</b><span>étape actuelle</span></div>
+    <div class="tile"><b>${G.total}</b><span>bilans sans sucre</span></div>
+  </div>
+  ${keys.length ? `
+  <section class="section">
+    <h2>Courbe de croissance</h2>
+    ${growthChart(G.log)}
+    <div class="legend"><span><span class="res-dot" style="background:var(--ok)"></span>Sans sucre : +1 jour</span><span><span class="res-dot" style="background:var(--warn)"></span>Produit sucré : pause</span><span><span class="res-dot" style="background:var(--bad)"></span>Craqué : une étape en arrière</span></div>
+  </section>
+  <section class="section">
+    <h2>30 derniers jours</h2>
+    <div class="cal">${cal.map(d => `<div class="${C[d] ? "r-" + C[d].result : ""} ${d === t ? "today" : ""}" title="${fmt(d)}${C[d] ? " : " + RESULTS[C[d].result].label : ""}">${parseKey(d).getDate()}</div>`).join("")}</div>
+  </section>
+  <section class="section">
+    <h2>Ressenti sur 14 jours</h2>
+    <div class="chart">
+      <div class="yax"><span>Libre</span><span>Neutre</span><span>Très mal</span></div>
+      <div style="min-width:0">
+        <div class="bars">${last14.map(d => { const m = C[d]?.mood; return m ? `<div style="height:${(m - 1) / 4 * 100}%;min-height:4px;opacity:${(.45 + .55 * (m - 1) / 4).toFixed(2)}" title="${fmt(d)} : ${MOODS[m - 1]}"></div>` : `<div class="none"></div>`; }).join("")}</div>
+        <div class="xax">${last14.map(d => `<span>${parseKey(d).toLocaleDateString("fr-FR", { weekday: "narrow" })}</span>`).join("")}</div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <h2>Vos déclencheurs</h2>
+    <div class="trig">${trig.map(([k, v, n]) => `<div class="trig-row"><span>${v}</span><div class="track"><i style="width:${n / tmax * 100}%"></i></div><span class="num">${n}</span></div>`).join("")}</div>
+  </section>
+  <section class="section">
+    <h2>Bilans</h2>
+    <div class="entries">${keys.map(k => { const e = C[k]; return `<div class="entry">
+      <div class="entry-h"><b>${fmt(k, { weekday: "long", day: "numeric", month: "long" })}</b><span class="chip ${e.result}">${RESULTS[e.result].label}</span></div>
+      <p class="meta">${e.mood ? "Ressenti : " + MOODS[e.mood - 1] : ""}${e.crave != null ? " · Envies : " + CRAVES[e.crave].toLowerCase() : ""}${(e.triggers || []).length ? " · " + e.triggers.map(x => TRIGGERS[x]).join(", ") : ""}</p>
+      ${e.note ? `<p class="note">« ${esc(e.note)} »</p>` : ""}
+      <button type="button" data-edit="${k}">Modifier</button></div>`; }).join("")}</div>
+  </section>`
+  : `<div class="empty-state"><p>Votre premier bilan du soir apparaîtra ici, avec la courbe de croissance de votre plante, votre calendrier, l'évolution de votre ressenti et vos déclencheurs les plus fréquents.</p><a href="#bilan">Faire mon premier bilan →</a></div>`}
+  <section class="settings">
+    <h2>Réglages</h2>
+    <div class="row"><label for="startEdit">Jour J</label><input type="date" id="startEdit" value="${S.start || ""}"><button class="ghost" type="button" id="startEditSave">Enregistrer</button></div>
+    <div class="row"><button class="ghost" type="button" id="resetSteps">${resetArmed ? "Confirmer : tout décocher" : "Décocher toutes les étapes du plan"}</button>${resetArmed ? `<button class="ghost" type="button" id="resetCancel">Annuler</button>` : ""}</div>
+  </section>
+  `;
+}
+
+/* ═══════════ Routage et rendu ═══════════ */
+function route() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  view = (BY_ID[h] || ["parcours", "bilan", "journal"].includes(h)) ? h : "aujourdhui";
+  if (view !== "bilan") editDate = null;
+  if (view !== "journal") resetArmed = false;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function render(fromSync) {
+  if (fromSync && view === "bilan") { applyLight(homeLevel()); return; }   // ne pas effacer une saisie en cours
+  if (BY_ID[view]) {
+    const s = BY_ID[view];
+    applyLight(stepLevel(s.i) * (s.id in S.done ? 1 : .9));
+    app.innerHTML = viewStep(view);
+  } else {
+    applyLight(homeLevel());
+    app.innerHTML = view === "parcours" ? viewPath() : view === "bilan" ? viewCheckin() : view === "journal" ? viewJournal() : viewToday();
+  }
+  const tab = BY_ID[view] ? "parcours" : view;
+  document.querySelectorAll(".tabs a").forEach(a => {
+    if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  document.title = "Libération du Sucre";
+  bind();
+}
+
+function bind() {
+  const q = id => document.getElementById(id);
+  q("startSave")?.addEventListener("click", () => {
+    const v = q("startInput").value; if (!v) return;
+    S.start = v; saveProgress(); render(); toast("Jour J fixé au " + fmt(v));
+  });
+  q("startEditSave")?.addEventListener("click", () => {
+    const v = q("startEdit").value;
+    S.start = v || null; saveProgress(); render(); toast(v ? "Jour J fixé au " + fmt(v) : "Jour J retiré");
+  });
+  q("resetSteps")?.addEventListener("click", () => {
+    if (!resetArmed) { resetArmed = true; render(); return; }
+    S.done = {}; resetArmed = false; saveProgress(); render(); toast("Toutes les étapes sont décochées");
+  });
+  q("resetCancel")?.addEventListener("click", () => { resetArmed = false; render(); });
+  q("stepToggle")?.addEventListener("click", () => {
+    const s = BY_ID[view];
+    if (s.id in S.done) { delete S.done[s.id]; saveProgress(); render(); return; }
+    S.done[s.id] = todayKey(); saveProgress();
+    flash(); render();
+    const phaseDone = s.phase.steps.every(x => x.id in S.done);
+    toast(doneCount() === N ? "Les 21 étapes sont accomplies. Plein jour."
+      : phaseDone ? `${s.phase.label} terminée : ${s.phase.light.toLowerCase()} atteint`
+      : `Étape ${s.i + 1} accomplie · lumière ${Math.round(doneCount() / N * 100)} %`);
+  });
+  document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => {
+    editDate = b.dataset.edit;
+    location.hash = "bilan";
+  }));
+  const form = q("ciForm");
+  if (form) {
+    form.querySelectorAll('input[name="date"]').forEach(r => r.addEventListener("change", () => { editDate = r.value; render(); }));
+    form.addEventListener("submit", ev => {
+      ev.preventDefault();
+      const fd = new FormData(form);
+      const result = fd.get("result");
+      if (!result) { toast("Indiquez comment s'est passée votre journée"); q("r-reussi").focus(); return; }
+      const date = fd.get("date") || todayKey();
+      const entry = {
+        result,
+        mood: fd.get("mood") ? Number(fd.get("mood")) : null,
+        crave: fd.get("crave") != null ? Number(fd.get("crave")) : null,
+        triggers: fd.getAll("trig"),
+        note: String(fd.get("note") || "").trim().slice(0, 2000),
+        savedAt: new Date().toISOString(),
+      };
+      saveCheckin(date, entry);
+      if (result === "reussi") flash();
+      const after = q("after");
+      after.className = "after"; after.innerHTML = afterMessage(result); after.hidden = false;
+      form.querySelector('button[type="submit"]').textContent = "Mettre à jour mon bilan";
+      editDate = date;
+      after.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+}
+
+window.addEventListener("hashchange", route);
+lsLoad();
+route();
+connect();
+</script>
+
+</body></html>
